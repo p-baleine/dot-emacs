@@ -1,7 +1,7 @@
 ;; 文字コードの設定
 (set-language-environment "Japanese")
 (require 'ucs-normalize)
-(prefer-coding-system 'utf-8-hfs)
+(prefer-coding-system 'utf-8)
 (setq file-name-coding-system 'utf-8-hfs)
 (setq local-coding-system 'utf-8-hfs)
 
@@ -17,6 +17,7 @@
 
 ;; デフォルトのタブ幅を４、タブの代わりに空白
 (setq-default tab-width 4 indent-tabs-mode nil)
+;(setq-default tab-width 4 indent-tabs-mode t)
 ;; ファイルパスの表示
 (setq frame-title-format
       (format "%%f - Emacs@%s" (system-name)))
@@ -47,7 +48,10 @@
 ;; コピー＆ペースト
 (require 'osx-clipboard)
 
-;; anything.el
+;; jaspace.el
+(require 'jaspace)
+
+;; anything.el;
 ;; M-x auto-install-batch anything
 (when (require 'anything nil t)
   (setq
@@ -66,9 +70,44 @@
   (require 'anything-grep nil t)
   (setq warning-suppress-types nil)
   (require 'anything-startup)
+  (require 'anything-gtags)
   (setq anything-c-filelist-file-name "~/.emacs.d/anything-filelist/all.filelist")
   (setq anything-grep-candidates-fast-directory-regexp 
         "^/Users/tajima_junpei/\.emacs\.d/anything-filelist"))
+
+(defun my-anything ()
+  (interactive)
+  (anything-other-buffer
+   '(anything-c-source-buffers
+     anything-c-source-file-name-history
+     anything-c-source-info-pages
+     anything-c-source-info-elisp
+     anything-c-source-man-pages
+     anything-c-source-locate
+     anything-c-source-etags-select 
+     anything-c-source-gtags-select 
+     anything-c-source-emacs-commands)
+   " *my-anything*"))
+
+(defun my-anything-from-here ()
+  (interactive)
+  (anything
+   :sources
+   '(anything-c-source-buffers
+     anything-c-source-file-name-history
+     anything-c-source-info-pages
+     anything-c-source-info-elisp
+     anything-c-source-man-pages
+     anything-c-source-locate
+     anything-c-source-etags-select 
+     anything-c-source-gtags-select 
+     anything-c-source-emacs-commands)
+   :input
+   (thing-at-point 'symbol)))
+
+(global-set-key (kbd "<f1>") 'my-anything)
+(global-set-key (kbd "<f2>") 'my-anything-from-here)
+(global-set-key (kbd "<f3>") 'anything-filelist+)
 
 ;; ELPAとMarmalade
 ;; (install-elisp "http://repo.or.cz/w/emacs.git/blob_plain/1a0a666f941c99882093d7bd08ced15033bc3f0c:/lisp/emacs-lisp/package.el")
@@ -111,6 +150,12 @@
   (define-key ac-mode-map (kbd "M-TAB") 'auto-complete)
   (ac-config-default))
 
+;; e2wm
+;; (auto-install-from-url "http://github.com/kiwanami/emacs-window-layout/raw/master/window-layout.el")
+;; (auto-install-from-url "http://github.com/kiwanami/emacs-window-manager/raw/master/e2wm.el")
+(require 'e2wm)
+(global-set-key (kbd "M-+") 'e2wm:start-management)
+
 ;; rinari
 ;; ELPAから落とせないため自前でビルド
 ;; $ cd ~/opt
@@ -132,9 +177,161 @@
 	  (lambda () (rinari-launch)))
 
 ;; php-mode
-;; (install-elisp "http://php-mode.svn.sourceforge.net/svnroot/php-mode/tags/php-mode-1.5.0/php-mode.el")
+;; (install-elisp "https://raw.github.com/rradonic/php-mode/master/php-mode.el")
 (load-library "php-mode")
 (require 'php-mode)
+(add-hook 'php-mode-hook '(lambda ()
+    (setq c-basic-offset 8)
+    (setq c-tab-width 8)
+    (setq c-indent-level 8)
+    (setq tab-width 8)
+    (setq indent-tabs-mode t)
+    (setq-default tab-width 8)
+))
+
+;; php-completion
+;; (install-elisp "http://www.emacswiki.org/emacs/download/php-completion.el")
+;; (install-elisp "https://raw.github.com/m2ym/auto-complete/master/auto-complete.el")
+(add-hook 'php-mode-hook
+         (lambda ()
+             (require 'php-completion)
+             (php-completion-mode t)
+             (define-key php-mode-map (kbd "C-o") 'phpcmp-complete)
+             (require 'auto-complete)
+             (make-variable-buffer-local 'ac-sources)
+             (add-to-list 'ac-sources 'ac-source-php-completion)
+             (auto-complete-mode t)
+             (gtags-mode t)))
+
+;; Closure Linter
+;; $ sudo easy_install http://closure-linter.googlecode.com/files/closure_linter-latest.tar.gz
+;; (install-elisp "https://raw.github.com/gist/561978/f7c1957948c5b2bc1323c53a44d4d56f4e99ce81/gjslint.el")
+
+;; js2-mode
+;; M-x package-list-packages js2-mode
+(add-to-list 'auto-mode-alist '("\\.js$" . js2-mode))
+  (setq js2-basic-offset 8)
+  ;(setq js2-auto-indent-p t)
+  (setq js2-cleanup-whitespace t)
+  ;(setq js2-enter-indents-newline t)
+  ;(setq js2-indent-on-enter-key t)
+  (add-hook 'js2-mode-hook
+	    #'(lambda ()
+			(require 'js)
+            (setq tab-width 4)
+            (setq-default tab-width 8)
+			(setq indent-tabs-mode t)
+			(setq js-indent-level 4
+				  js-expr-indent-offset 8)
+			(set (make-local-variable 'indent-line-function) 'js-indent-line)
+            (flymake-mode t)))
+
+;; org-mode
+;; TODO状態
+(setq org-todo-keywords
+      '((sequence "TODO(t)" "WAIT(w)" "|" "DONE(d)" "SOMEDAY(s)")))
+;; DONEの時刻を記録
+(setq org-log-done 'time)
+(setq org-agenda-files '("~/Documents/git/beluga/docs/work/beluga_1000.org"))
+(global-set-key (kbd "<f4>") 'org-agenda)
+
+;; dart-mode
+(require 'dart-mode)
+(add-to-list 'auto-mode-alist '("\\.dart$" . dart-mode))
+; (add-hook 'dart-mode-hook)
+
+;; gauche
+(setq process-coding-system-alist
+      (cons '("gosh" utf-8 . utf-8) process-coding-system-alist))
+
+(setq scheme-program-name "/Users/tajima_junpei/opt/Gauche-0.9.2/bin/gosh -i")
+(autoload 'scheme-mode "cmuscheme" "Major mode for Scheme." t)
+(autoload 'run-scheme "cmuscheme" "Run an inferior Scheme process." t)
+
+;; gtags
+(autoload 'gtags-mode "gtags" "" t)
+(setq gtags-mode-hook
+      '(lambda ()
+         (local-set-key "\M-t" 'gtags-find-tag)
+         (local-set-key "\M-r" 'gtags-find-rtag)
+         (local-set-key "\M-s" 'gtags-find-symbol)
+         (local-set-key "\C-t" 'gtags-pop-stack)
+         ))
+
+(autoload 'gtags-mode "gtags" "" t)
+(setq gtags-mode-hook
+      '(lambda ()
+         (local-set-key "\M-t" 'gtags-find-tag)
+         (local-set-key "\M-r" 'gtags-find-rtag)
+         (local-set-key "\M-s" 'gtags-find-symbol)
+         (local-set-key "\C-t" 'gtags-pop-stack)
+         ))
+
+;; popwin
+;; (install-elisp "https://github.com/m2ym/popwin-el/raw/master/popwin.el")
+(require 'popwin)
+(setq display-buffer-function 'popwin:display-buffer)
+
+;; edbi
+;; (install-elisp "https://github.com/kiwanami/emacs-deferred/raw/master/deferred.el")
+;; (auto-install-from-url "https://github.com/kiwanami/emacs-deferred/raw/master/concurrent.el")
+;; (auto-install-from-url "https://github.com/kiwanami/emacs-ctable/raw/master/ctable.el")
+;; (auto-install-from-url "https://github.com/kiwanami/emacs-epc/raw/master/epc.el")
+;; (auto-install-from-url "https://github.com/kiwanami/emacs-edbi/raw/master/edbi.el")
+;; https://github.com/kiwanami/emacs-edbi/raw/master/edbi-bridge.plcp 
+
+;; windows.el
+;; (install-elisp "http://www.gentei.org/~yuuji/software/revive.el")
+;; (install-elisp "http://www.gentei.org/~yuuji/software/windows.el")
+(autoload 'save-current-configuration "revive" "Save status" t)
+(autoload 'resume "revive" "Resume Emacs" t)
+(autoload 'wipe "revive" "Wipe emacs" t)
+(require 'windows)
+(win:startup-with-window)
+(define-key ctl-x-map "C" 'see-you-again)
+
+;; elisp編集用(テクニックバイブルより)
+;; (install-elisp-from-emacswiki "open-junk-file.el")
+;; (install-elisp-from-emacswiki "lispxmp.el")
+;; (install-elisp "http://mumble.net/~campbell/emacs/paredit.el")
+;; (install-elisp-from-emacswiki "auto-async-byte-compile.el")
+;; 試行錯誤要ファイルを開くための設定h
+(require 'open-junk-file)
+;; C-c C-zで試行錯誤ファイルを開く
+(global-set-key (kbd "C-c C-z") 'open-junk-file)
+;; 式の評価結果を注釈するための設定
+(require 'lispxmp)
+;; emacs-lis-pmodeでC-c C-dを押すと注釈される
+(define-key emacs-lisp-mode-map (kbd "C-c C-d") 'lispxmp)
+;; 括弧の対応を保持して編集する設定
+(require 'paredit)
+(add-hook 'emacs-lisp-mode-hook 'enable-paredit-mode)
+(add-hook 'lisp-interaction-mode-hook 'enable-paredit-mode)
+(add-hook 'lisp-mode-hook 'enable-paredit-mode)
+(add-hook 'ielm-mode-hook 'enable-paredit-mode)
+(require 'auto-async-byte-compile)
+;; 自動コンパイルを無効にするファイル名の正規表現
+(setq auto-async-byte-compile-exclude-files-regexp "/junk/")
+(add-hook 'emacs-lisp-mode-hook 'enable-auto-async-byte-compile-mode)
+(add-hook 'emacs-lisp-mode-hook 'turn-on-eldoc-mode)
+(add-hook 'lisp-interaction-mode-hook 'turn-on-eldoc-mode)
+(add-hook 'ielm-mode-hook 'turn-on-eldoc-mode)
+(setq eldoc-idole-delay 0.2)
+(setq eldoc-minor-mode-string "")
+;; 改行と同時にインデントも行う
+(global-set-key "\C-m" 'newline-and-indent)
+;; find-functionをキー割り当てする
+(find-function-setup-keys)
+
+;; nu
+(require 'nu)
+;; (require 'paredit)
+
+;; (add-hook 'nu-mode-hook (lambda () (paredit-mode +1)) t)
+
+;; (require 'parenface)
+;; (set-face-foreground 'paren-face "SteelBlue")
+;; (add-hook 'nu-mode-hook (paren-face-add-support nu-font-lock-keywords))
 
 (if window-system
     (progn
@@ -144,10 +341,14 @@
 		      "/usr/local/bin/wget:"
 		      "/Users/tajima_junpei/opt/ruby/bin:"
 		      "/Users/tajima_junpei/opt/lib/ruby/gems/1.8/bin:"
+		      "/Users/tajima_junpei/opt/global-6.1/bin:"
+              "/Users/tajima_junpei/opt/Gauche-0.9.2/bin:"
 		      (getenv "PATH")))
       (setenv "GEM_HOME" "/Users/tajima_junpei/opt/lib/ruby/gems/1.8")
       ;; Drag & Drop
       (define-key global-map [ns-drag-file] 'ns-find-file)
+      ;; カーソル色
+      (add-to-list 'default-frame-alist '(cursor-color . "SlateBlue2"))
       ;; フォント
       (when (>= emacs-major-version 23)
         (set-face-attribute 'default nil
@@ -173,3 +374,4 @@
                 (".*monaco cy-bold-.*-mac-cyrillic" . 0.9)
                 (".*monaco-bold-.*-mac-roman" . 0.9)
                 ("-cdac$" . 1.3))))))
+
